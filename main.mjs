@@ -5,17 +5,36 @@ import { iconMap } from "./iconMap.mjs";
 navigator.geolocation.getCurrentPosition(success, error)
 function success({ coords }) {
     
-    getWeather(coords.latitude, coords.longitude, Intl.DateTimeFormat().resolvedOptions().timeZone).then(
-      renderWeather
-    );
+  getCityName(coords.latitude, coords.longitude)
+  .then(cityName => {
+      console.log(`City: ${cityName}`);
+      getWeather(coords.latitude, coords.longitude, Intl.DateTimeFormat().resolvedOptions().timeZone,cityName)
+          .then(renderWeather);
+  })
+  .catch(error => console.error(error));
 }
 function error() {
     alert("pleease allow us to use your location")
 }
+function getCityName(latitude, longitude) {
+  // Make an API request to Nominatim for reverse geocoding
+  const nominatimApiUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`;
 
-function renderWeather({ current, daily, hourly }) {
-    console.log(hourly);
-  renderCurrentWeather(current);
+  return fetch(nominatimApiUrl)
+      .then(response => response.json())
+      .then(data => {
+          // Extract the city name from the Nominatim response
+          const city = data.address?.city;
+
+          return city || 'Unknown';
+      });
+}
+
+
+
+function renderWeather({ current, daily, hourly,city }) {
+    console.log(city );
+  renderCurrentWeather(current,city);
   renderDailyWeather(daily);
   renderHourlyWeather(hourly);
   document.body.classList.remove("blurred");
@@ -28,9 +47,10 @@ function getIconUrl(iconCode) {
   return `icons/${iconMap.get(iconCode)}.svg`;
 }
 const currentIcon = document.querySelector("[data-current-icon]");
-function renderCurrentWeather(current) {
+function renderCurrentWeather(current,city) {
   currentIcon.src = getIconUrl(current.weatherCode);
   setValue("current-temp", current.currentTemp);
+  setValue("city", city);
   setValue("current-high", current.highTemp);
   setValue("current-fl-high", current.lowTemp);
   setValue("current-fl-low", current.lowfeelsLike);
